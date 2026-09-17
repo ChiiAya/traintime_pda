@@ -4,3 +4,8 @@ course_reminder:
   body: '{time} 分鐘後開始上課'
   location: 地點：{location}
   teacher: 教師：{teacher}
+
+# Android 16 實時更新課前提醒的文案。通知正文是獨立的一套，普通通知的文案不受影響。
+live_update:
+  time_and_place: "{time} · {place}"
+  time_only: "{time} 上課"

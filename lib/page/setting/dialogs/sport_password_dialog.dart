@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:watermeter/page/public_widget/toast.dart';
+import 'package:watermeter/page/setting/dialogs/dialog_text_focus.dart';
 import 'package:watermeter/repository/preference.dart' as user_perference;
 
 class SportPasswordDialog extends StatefulWidget {
@@ -15,6 +16,9 @@ class _SportPasswordDialogState extends State<SportPasswordDialog> {
   final TextEditingController _sportPasswordController =
       TextEditingController();
 
+  /// Focused only once the dialog is fully on screen; see [focusWhenDialogSettled].
+  final FocusNode _passwordFocusNode = FocusNode();
+
   bool _couldView = true;
 
   // 用于标识是否通过返回按钮关闭
@@ -23,6 +27,7 @@ class _SportPasswordDialogState extends State<SportPasswordDialog> {
   @override
   void initState() {
     super.initState();
+    focusWhenDialogSettled(context, _passwordFocusNode);
     String initialText = user_perference.getString(
       user_perference.Preference.sportPassword,
     );
@@ -35,6 +40,7 @@ class _SportPasswordDialogState extends State<SportPasswordDialog> {
   @override
   void dispose() {
     _sportPasswordController.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
@@ -46,7 +52,9 @@ class _SportPasswordDialogState extends State<SportPasswordDialog> {
           FlutterI18n.translate(context, "setting.change_sport_title"),
         ),
         content: TextField(
-          autofocus: true,
+          // Deliberately not `autofocus`: it races the dialog's push transition and can leave the
+          // field focused with no keyboard attached, intermittently. See focusWhenDialogSettled.
+          focusNode: _passwordFocusNode,
           controller: _sportPasswordController,
           obscureText: _couldView,
           decoration: InputDecoration(

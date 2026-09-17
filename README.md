@@ -1,3 +1,12 @@
+## Branch Info
+
+<div align="center">
+这是一个 Full-Vibe 的 Traintime PDA 改版，适配了安卓 API36/Android16 的实时动态（live updates）通知，主要用于课前课程信息上岛，在 HyperOS3 上测试通过。<br>
+以下为原README
+</div>
+
+## Original README
+
 <div align="center">
 <img src="./assets/icon.png" style="border-radius:16px; margin:10px; width:120px" alt="XDYou">
 <h1>Traintime PDA / XDYou</h1>

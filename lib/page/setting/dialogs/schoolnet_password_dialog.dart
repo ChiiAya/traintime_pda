@@ -7,6 +7,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:watermeter/page/public_widget/toast.dart';
+import 'package:watermeter/page/setting/dialogs/dialog_text_focus.dart';
 import 'package:watermeter/repository/preference.dart' as preference;
 
 class SchoolNetPasswordDialog extends StatefulWidget {
@@ -20,11 +21,15 @@ class SchoolNetPasswordDialog extends StatefulWidget {
 class _SchoolNetPasswordDialogState extends State<SchoolNetPasswordDialog> {
   late final TextEditingController _schoolNetPasswordController;
 
+  /// Focused only once the dialog is fully on screen; see [focusWhenDialogSettled].
+  final FocusNode _passwordFocusNode = FocusNode();
+
   bool _couldView = true;
 
   @override
   void initState() {
     super.initState();
+    focusWhenDialogSettled(context, _passwordFocusNode);
     final pwd = preference.getString(
       preference.Preference.schoolNetQueryPassword,
     );
@@ -39,6 +44,7 @@ class _SchoolNetPasswordDialogState extends State<SchoolNetPasswordDialog> {
   @override
   void dispose() {
     _schoolNetPasswordController.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
@@ -56,7 +62,9 @@ class _SchoolNetPasswordDialogState extends State<SchoolNetPasswordDialog> {
         color: Theme.of(context).colorScheme.onSurface,
       ),
       content: TextField(
-        autofocus: true,
+        // Deliberately not `autofocus`: it races the dialog's push transition and can leave the
+        // field focused with no keyboard attached, intermittently. See focusWhenDialogSettled.
+        focusNode: _passwordFocusNode,
         controller: _schoolNetPasswordController,
         obscureText: _couldView,
         decoration: InputDecoration(

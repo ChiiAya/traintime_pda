@@ -88,6 +88,10 @@ enum Preference {
     key: "courseReminderEnableExperimentNotifications",
     type: "bool",
   ), // 是否启用实验提醒
+  enableLiveUpdateReminder(
+    key: "enableLiveUpdateReminder",
+    type: "bool",
+  ), // 是否用 Android 16 实时更新接管课前提醒（仅 API 36+ 且用户允许时生效）
   notificationLastLocale(
     key: "notification_last_locale",
     type: "String",

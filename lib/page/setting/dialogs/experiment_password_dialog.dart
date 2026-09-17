@@ -7,6 +7,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:watermeter/page/public_widget/toast.dart';
+import 'package:watermeter/page/setting/dialogs/dialog_text_focus.dart';
 import 'package:watermeter/repository/preference.dart' as user_perference;
 
 class ExperimentPasswordDialog extends StatefulWidget {
@@ -38,6 +39,22 @@ class _ExperimentPasswordDialogState extends State<ExperimentPasswordDialog> {
 
   bool _couldView = true;
 
+  /// Focused only once the dialog is fully on screen; see [focusWhenDialogSettled].
+  final FocusNode _passwordFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    focusWhenDialogSettled(context, _passwordFocusNode);
+  }
+
+  @override
+  void dispose() {
+    _experimentPasswordController.dispose();
+    _passwordFocusNode.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -45,7 +62,9 @@ class _ExperimentPasswordDialogState extends State<ExperimentPasswordDialog> {
         FlutterI18n.translate(context, "setting.change_experiment_title"),
       ),
       content: TextField(
-        autofocus: true,
+        // Deliberately not `autofocus`: that races the dialog's push transition and can leave the
+        // field focused with no keyboard, intermittently. See focusWhenDialogSettled.
+        focusNode: _passwordFocusNode,
         controller: _experimentPasswordController,
         obscureText: _couldView,
         decoration: InputDecoration(

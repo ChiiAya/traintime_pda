@@ -891,6 +891,32 @@ setting:
     cancel_all_success: 已取消所有課前提醒
     reschedule_success: 已重新安排 {count} 個課前提醒
     reschedule_failed: '重新安排通知失敗: {error}'
+    live_update_section: 實時更新（Android 16）
+    live_update_enable: 用實時更新顯示課前提醒
+    live_update_enable_hint: 需要 Android 16 及以上系統
+    live_update_status: 設備支持情況
+    live_update_status_loading: 檢測中…
+    live_update_status_ready: 支持（Android 16 實時更新）
+    live_update_status_platform_unsupported: 當前系統低於 Android 16，不支持實時更新，將使用普通提醒
+    live_update_status_user_disabled: 系統未允許 XDYou 發布實時更新，將使用普通提醒
+    live_update_sdk: "系統 API 等級：{sdk}（需 ≥ {required}）"
+    live_update_promoted_permission: 實時更新權限
+    live_update_promoted_permission_hint: 在系統設置裡允許 XDYou 發布實時更新（部分機型稱為「提升的通知」）
+    live_update_promoted_permission_open: 去設置
+    live_update_takeover_hint: "開啟後，課程和自定義課程的課前提醒會以實時更新發布，顯示在鎖屏、狀態欄膠囊和通知欄頂部；實驗與考試提醒仍然是普通通知。"
+    live_update_pending: 已安排 {count} 個實時更新提醒
+    live_update_test: 發送測試提醒
+    live_update_test_hint: 立刻發一條測試內容，確認系統是否真的把它提升為實時更新
+    live_update_test_card_title: 實時更新測試
+    live_update_test_card_subtitle: 能看到這條就說明實時更新可用
+    live_update_test_sent: 已發送實時更新
+    live_update_test_not_promotable: 已發送，但系統認為通知特徵不滿足實時更新要求
+    live_update_test_not_allowed: 已發送為普通通知：系統未允許本應用發布實時更新
+    live_update_test_not_posted: "發送失敗：{error}"
+    live_update_test_failed: "發送失敗：{error}"
+    live_update_clear: 清除實時更新提醒
+    live_update_cleared: 已清除實時更新提醒
+    live_update_load_failed: "無法讀取實時更新狀態：{error}"
   notification_debug_page: 通知服務調試頁面
   classtable_setting: 課表相關設置
   background: 開啟課表背景圖

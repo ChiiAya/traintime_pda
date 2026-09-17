@@ -984,6 +984,32 @@ setting:
     cancel_all_success: All pre-class reminders cancelled
     reschedule_success: Rescheduled {count} pre-class reminders
     reschedule_failed: "Failed to reschedule notifications: {error}"
+    live_update_section: Live Updates (Android 16)
+    live_update_enable: Show pre-class reminders as Live Updates
+    live_update_enable_hint: Requires Android 16 or newer
+    live_update_status: Device support
+    live_update_status_loading: Checking…
+    live_update_status_ready: Supported (Android 16 Live Updates)
+    live_update_status_platform_unsupported: This system is older than Android 16, which introduced Live Updates; ordinary reminders will be used
+    live_update_status_user_disabled: The system is not letting XDYou post Live Updates, so ordinary reminders will be used
+    live_update_sdk: "System API level: {sdk} (requires ≥ {required})"
+    live_update_promoted_permission: Live Update permission
+    live_update_promoted_permission_hint: Allow XDYou to post promoted notifications in system settings (some devices call this promoted notifications)
+    live_update_promoted_permission_open: Open settings
+    live_update_takeover_hint: "When enabled, course and custom-class reminders are posted as Live Updates, shown on the lock screen, as a status-bar chip and at the top of the notification shade. Experiments and exams still use ordinary notifications."
+    live_update_pending: "{count} Live Update reminders armed"
+    live_update_test: Send a test reminder
+    live_update_test_hint: Publish a test card right now to check whether the system really promotes it
+    live_update_test_card_title: Live Update test
+    live_update_test_card_subtitle: If you can see this, Live Updates are working
+    live_update_test_sent: Live Update sent
+    live_update_test_not_promotable: Sent, but the system does not consider the notification eligible for promotion
+    live_update_test_not_allowed: Sent as an ordinary notification because Live Updates are not allowed for this app
+    live_update_test_not_posted: "Failed to send: {error}"
+    live_update_test_failed: "Failed to send: {error}"
+    live_update_clear: Clear Live Update reminders
+    live_update_cleared: Live Update reminders cleared
+    live_update_load_failed: "Unable to read Live Update status: {error}"
   notification_debug_page: Notification Services Debug Page
   classtable_setting: Class Schedule Related
   background: Background image

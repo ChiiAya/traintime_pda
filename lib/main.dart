@@ -11,6 +11,7 @@ import 'package:catcher_2/catcher_2.dart';
 import 'package:chinese_font_library/chinese_font_library.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -23,7 +24,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:watermeter/controller/theme_controller.dart';
 import 'package:watermeter/repository/network_client.dart' as repo_general;
 import 'package:watermeter/repository/notification/notification_registrar.dart';
+import 'package:watermeter/repository/notification/live_update_service.dart';
 import 'package:watermeter/repository/preference.dart' as preference;
+import 'package:watermeter/routing/routes.dart';
 import 'package:watermeter/page/homepage/home.dart';
 import 'package:watermeter/page/login/login_window.dart';
 import 'package:watermeter/repository/ids_session/ids_session.dart';
@@ -89,6 +92,36 @@ void main() async {
       log.error('Failed to initialize notification services', e);
     }
   }
+
+  // Live Update reminders are published by the Android side. Tapping one re-enters the app through
+  // MainActivity, which reports the event over a MethodChannel.
+  if (Platform.isAndroid) {
+    final liveUpdate = LiveUpdateService();
+    liveUpdate.onLiveUpdateOpened(openClassTableFromLiveUpdate);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Cold start: the tap happened before this isolate existed, so pull the recorded flag.
+      if (await liveUpdate.consumePendingOpen()) {
+        await openClassTableFromLiveUpdate();
+      }
+    });
+  }
+}
+
+/// Opens the class table in response to the user tapping a course Live Update.
+///
+/// Consumes the pending flag first so the same tap is never handled twice, then mirrors what
+/// [CourseReminderService.handleNotificationTap] does for ordinary reminders.
+Future<void> openClassTableFromLiveUpdate() async {
+  await LiveUpdateService().consumePendingOpen();
+
+  final navigator = preference.debuggerKey.currentState;
+  if (navigator == null) {
+    log.warning(
+      '[LiveUpdate] Navigator unavailable, cannot open the class table',
+    );
+    return;
+  }
+  navigator.push(Routes.resolveRoute(Routes.classTable));
 }
 
 class MyApp extends StatefulWidget {

@@ -19,6 +19,7 @@ import 'package:watermeter/model/xidian_ids/exam.dart';
 import 'package:watermeter/model/xidian_ids/experiment.dart';
 import 'package:watermeter/repository/logger.dart';
 import 'package:watermeter/repository/notification/notification_service.dart';
+import 'package:watermeter/repository/notification/live_update_service.dart';
 import 'package:watermeter/repository/preference.dart' as preference;
 import 'package:watermeter/routing/routes.dart';
 import 'package:watermeter/generated/non_ui_i18n.g.dart';
@@ -71,6 +72,13 @@ class CourseReminderService extends NotificationService
     preference.Preference.courseReminderEnableExperimentNotifications,
   );
 
+  /// Whether course reminders should be published as Android Live Updates.
+  ///
+  /// This is only a user intent: [resolveLiveUpdatePlan] additionally requires the platform to
+  /// support Live Updates and the user to have allowed them.
+  bool get isLiveUpdateEnabled =>
+      preference.getBool(preference.Preference.enableLiveUpdateReminder);
+
   String get lastLocale =>
       preference.getString(preference.Preference.notificationLastLocale);
 
@@ -102,6 +110,9 @@ class CourseReminderService extends NotificationService
         '[CourseReminderService] Disabled, cancelling all notifications',
       );
       await cancelAllCourseNotifications();
+      // Live Update reminders are scheduled natively and are not covered by
+      // cancelAllCourseNotifications, so they are cleared explicitly.
+      await LiveUpdateService().cancelAllReminders();
     }
   }
 
@@ -139,6 +150,31 @@ class CourseReminderService extends NotificationService
     if (isEnabled) {
       log.info(
         '[CourseReminderService] Experiment notifications ${value ? "enabled" : "disabled"}, updating notifications',
+      );
+      await validateAndUpdateNotifications();
+    }
+  }
+
+  /// Turns Live Update course reminders on or off.
+  ///
+  /// Switching this only changes which channel carries a course reminder, so the whole plan is
+  /// rebuilt: on enable the courses move to Live Updates, on disable they fall back to the ordinary
+  /// notification path. Nothing is left scheduled on the channel that is no longer in use.
+  Future<void> setLiveUpdateEnabled(bool value) async {
+    await preference.setBool(
+      preference.Preference.enableLiveUpdateReminder,
+      value,
+    );
+
+    if (!value) {
+      // Drop the native alarm plan and anything currently posted first, so a failed reschedule
+      // below cannot leave orphaned alarms behind.
+      await LiveUpdateService().cancelAllReminders();
+    }
+
+    if (isEnabled) {
+      log.info(
+        '[CourseReminderService] Live Update reminders ${value ? "enabled" : "disabled"}, updating notifications',
       );
       await validateAndUpdateNotifications();
     }
@@ -352,9 +388,99 @@ class CourseReminderService extends NotificationService
         hasExamData;
   }
 
+  /// Starts collecting Live Update reminders, or returns null when the ordinary notification path
+  /// should keep handling courses.
+  ///
+  /// Live Updates only take over when the user asked for it *and* the device can really promote a
+  /// notification. Everywhere else the ordinary pre-class notification is kept, so turning the
+  /// setting on can never leave the user without a reminder.
+  Future<List<LiveUpdateReminder>?> resolveLiveUpdatePlan() async {
+    if (!isLiveUpdateEnabled) return null;
+
+    final status = await LiveUpdateService().status();
+    if (!status.canPost) {
+      log.info(
+        '[CourseReminderService] Live Updates unavailable '
+        '(${status.availability.name}, API ${status.sdkInt}), '
+        'keeping ordinary course reminders',
+      );
+      return null;
+    }
+    return <LiveUpdateReminder>[];
+  }
+
+  /// `HH:mm` label of a 1-based class slot, or an empty string when the slot is out of range.
+  String _classStartTimeLabel(int startClass) {
+    final int index = (startClass - 1) * 2;
+    if (index < 0 || index >= timeList.length) return "";
+    return timeList[index];
+  }
+
+  /// Builds the Live Update reminder for one class occurrence.
+  ///
+  /// The notification carries what the ordinary reminder cannot: the actual class time beside the
+  /// room, so it reads `08:30 · A-101` under the course name, with the teacher as subtext. The class
+  /// start is also what drives the system's own countdown and decides when the Live Update ends.
+  LiveUpdateReminder _buildLiveUpdateReminder({
+    required int id,
+    required String locale,
+    required String name,
+    required String startTimeLabel,
+    String? location,
+    String? teacher,
+    required DateTime triggerAt,
+    required DateTime startAt,
+    required int weekIndex,
+  }) {
+    final String place = (location ?? "").trim();
+    final String time = startTimeLabel.trim();
+
+    String subtitle;
+    if (time.isNotEmpty && place.isNotEmpty) {
+      subtitle = NonUII18n.translate(
+        locale,
+        'live_update.time_and_place',
+        translateParams: {'time': time, 'place': place},
+      );
+    } else if (time.isNotEmpty) {
+      subtitle = NonUII18n.translate(
+        locale,
+        'live_update.time_only',
+        translateParams: {'time': time},
+      );
+    } else {
+      subtitle = place;
+    }
+    // Falls back to the raw text when the translation table has no entry, so a stale generated
+    // i18n file can never blank out the notification.
+    if (subtitle.isEmpty) subtitle = time.isNotEmpty ? time : place;
+
+    final String teacherName = (teacher ?? "").trim();
+    final String extraText = teacherName.isEmpty
+        ? ""
+        : NonUII18n.translate(
+            locale,
+            'course_reminder.teacher',
+            translateParams: {'teacher': teacherName},
+          );
+
+    return LiveUpdateReminder(
+      id: id,
+      title: name,
+      subtitle: subtitle,
+      extraText: extraText,
+      digitText: time,
+      triggerAt: triggerAt,
+      startAt: startAt,
+      accentColor: LiveUpdateService.accentColorFor(name),
+      weekIndex: weekIndex,
+    );
+  }
+
   Future<void> _scheduleNotificationFromCustomCourseData({
     int daysToSchedule = 7,
     int minutesBefore = 5,
+    List<LiveUpdateReminder>? liveUpdatePlan,
   }) async {
     log.info(
       '[CourseReminderService] [scheduleNotificationsFromCustomCourseData] Starting to schedule notifications (daysToSchedule: $daysToSchedule, minutesBefore: $minutesBefore)...',
@@ -404,6 +530,26 @@ class CourseReminderService extends NotificationService
             'custom|${customClass.id}|${timeRange.id}|'
             '${classStartTime.toIso8601String()}|$minutesBefore|$weekIndex',
           );
+
+          if (liveUpdatePlan != null) {
+            // The Live Update takes this reminder over; no ordinary notification is scheduled for it.
+            liveUpdatePlan.add(
+              _buildLiveUpdateReminder(
+                id: notificationId,
+                locale: locale,
+                name: customClass.name,
+                startTimeLabel:
+                    '${classStartTime.hour.toString().padLeft(2, '0')}:'
+                    '${classStartTime.minute.toString().padLeft(2, '0')}',
+                location: customClass.classroom,
+                teacher: customClass.teacher,
+                triggerAt: notificationTime,
+                startAt: classStartTime,
+                weekIndex: weekIndex,
+              ),
+            );
+            continue;
+          }
 
           String title = NonUII18n.translate(
             locale,
@@ -460,6 +606,7 @@ class CourseReminderService extends NotificationService
   Future<void> _scheduleNotificationFromCourseData({
     int daysToSchedule = 7,
     int minutesBefore = 5,
+    List<LiveUpdateReminder>? liveUpdatePlan,
   }) async {
     log.info(
       '[CourseReminderService] [scheduleNotificationsFromCourseData] Starting to schedule notifications (daysToSchedule: $daysToSchedule, minutesBefore: $minutesBefore)...',
@@ -527,6 +674,24 @@ class CourseReminderService extends NotificationService
           );
 
           String locale = _getCurrentLocale();
+
+          if (liveUpdatePlan != null) {
+            // The Live Update takes this reminder over; no ordinary notification is scheduled for it.
+            liveUpdatePlan.add(
+              _buildLiveUpdateReminder(
+                id: notificationId,
+                locale: locale,
+                name: classDetail.name,
+                startTimeLabel: _classStartTimeLabel(timeArrangement.start),
+                location: timeArrangement.classroom,
+                teacher: timeArrangement.teacher,
+                triggerAt: notificationTime,
+                startAt: classStartTime,
+                weekIndex: weekIndex,
+              ),
+            );
+            continue;
+          }
 
           String title = NonUII18n.translate(
             locale,
@@ -814,15 +979,22 @@ class CourseReminderService extends NotificationService
     int minutesBefore = 5,
   }) async {
     try {
+      // Courses and user-added classes are carried by Live Updates when the platform supports it.
+      // Experiments and exams always stay on the ordinary notification path.
+      final List<LiveUpdateReminder>? liveUpdatePlan =
+          await resolveLiveUpdatePlan();
+
     // Schedule course, custom course, experiment, and exam notifications in parallel.
       await Future.wait([
         _scheduleNotificationFromCourseData(
           daysToSchedule: daysToSchedule,
           minutesBefore: minutesBefore,
+          liveUpdatePlan: liveUpdatePlan,
         ),
         _scheduleNotificationFromCustomCourseData(
           daysToSchedule: daysToSchedule,
           minutesBefore: minutesBefore,
+          liveUpdatePlan: liveUpdatePlan,
         ),
         if (enableExperimentNotifications)
           _scheduleNotificationFromExperimentData(
@@ -834,6 +1006,12 @@ class CourseReminderService extends NotificationService
           minutesBefore: minutesBefore,
         ),
       ]);
+
+      if (liveUpdatePlan != null) {
+        // Replaces the whole native alarm plan, so reminders that moved or disappeared are disarmed.
+        // Deliberately after Future.wait: a failed course pass must not wipe the existing plan.
+        await LiveUpdateService().scheduleReminders(liveUpdatePlan);
+      }
     } catch (e, stackTrace) {
       log.error(
         '[CourseReminderService] [scheduleNotificationsFromCourseData] Failed to schedule notifications from course data',

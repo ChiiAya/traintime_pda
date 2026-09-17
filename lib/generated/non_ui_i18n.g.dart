@@ -19,6 +19,10 @@ class NonUII18n {
         "location": "Location: {location}",
         "teacher": "Teacher: {teacher}",
       },
+      "live_update": {
+        "time_and_place": "{time} · {place}",
+        "time_only": "Class at {time}",
+      },
     },
     "zh_CN": {
       "course_reminder": {
@@ -27,6 +31,10 @@ class NonUII18n {
         "location": "地点：{location}",
         "teacher": "教师：{teacher}",
       },
+      "live_update": {
+        "time_and_place": "{time} · {place}",
+        "time_only": "{time} 上课",
+      },
     },
     "zh_TW": {
       "course_reminder": {
@@ -34,6 +42,10 @@ class NonUII18n {
         "body": "{time} 分鐘後開始上課",
         "location": "地點：{location}",
         "teacher": "教師：{teacher}",
+      },
+      "live_update": {
+        "time_and_place": "{time} · {place}",
+        "time_only": "{time} 上課",
       },
     },
   };

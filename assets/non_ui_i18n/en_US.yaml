@@ -3,3 +3,9 @@ course_reminder:
   body: "Class starts in {time} minutes"
   location: "Location: {location}"
   teacher: "Teacher: {teacher}"
+
+# Copy for the Android 16 Live Update reminder. The notification body is a separate set of strings,
+# so the ordinary pre-class notification wording above is left untouched.
+live_update:
+  time_and_place: "{time} · {place}"
+  time_only: "Class at {time}"
